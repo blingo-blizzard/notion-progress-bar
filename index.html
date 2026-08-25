@@ -1,256 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Progress</title>
 <style>
   :root{
     --accent-from: #2383E2;
     --accent-to: #6BB6FF;
-    --track: rgba(55,53,47,0.09);
+    --bg: transparent;
     --text: #37352F;
     --text-dim: rgba(55,53,47,0.55);
-    --tick: rgba(55,53,47,0.25);
+    --track: rgba(55,53,47,0.08);
   }
-
   @media (prefers-color-scheme: dark){
     :root{
-      --track: rgba(255,255,255,0.10);
       --text: rgba(255,255,255,0.92);
       --text-dim: rgba(255,255,255,0.5);
-      --tick: rgba(255,255,255,0.28);
+      --track: rgba(255,255,255,0.06);
     }
   }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  body{display:flex;align-items:center;justify-content:center;padding:22px}
 
-  *{ box-sizing: border-box; }
+  .card{width:100%;max-width:420px}
+  .top{display:flex;align-items:flex-start;justify-content:space-between}
+  .label{font-weight:600;font-size:15px}
+  .sublabel{font-weight:400;font-size:13px;color:var(--text-dim);margin-left:8px}
+  .stat{font-weight:700;font-size:18px;display:flex;flex-direction:column;align-items:flex-end}
+  .stat .of{font-weight:400;color:var(--text-dim);font-size:13px}
 
-  html,body{
-    margin:0;
-    padding:0;
-    background: transparent;
-    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
-                 Helvetica, "Helvetica Neue", Arial, sans-serif;
-    color: var(--text);
-  }
+  .circle-wrap{display:flex;align-items:center;justify-content:center;margin-top:12px}
+  .svg-root{width:100%;max-width:240px;height:auto}
+  svg{display:block;width:100%;height:auto}
 
-  body{
-    display:flex;
-    align-items:center;
-    min-height:100vh;
-    padding: 14px 18px;
-  }
+  .center-text{font-weight:700;font-size:28px;fill:var(--text);font-family:inherit}
+  .sub-center{font-size:12px;fill:var(--text-dim);font-weight:600}
 
-  .card{
-    width:100%;
-    max-width: 640px;
-  }
+  .caption{margin-top:10px;font-size:13px;color:var(--text-dim);text-align:right}
 
-  .row{
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
-    gap: 12px;
-    margin-bottom: 9px;
-  }
-
-  .label{
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .sublabel{
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--text-dim);
-    margin-left: 8px;
-  }
-
-  .stat{
-    font-size: 14px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-
-  .stat .of{
-    font-weight: 400;
-    color: var(--text-dim);
-  }
-
-  .track{
-    position: relative;
-    height: 10px;
-    border-radius: 999px;
-    background: var(--track);
-    overflow: hidden;
-  }
-
-  .fill{
-    position: absolute;
-    top:0; left:0; bottom:0;
-    width: 0%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
-    transition: width 1.1s cubic-bezier(.16,1,.3,1);
-  }
-
-  .fill::after{
-    content:"";
-    position:absolute;
-    inset:0;
-    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%);
-    background-size: 200% 100%;
-    animation: sheen 2.6s ease-in-out 1.1s 1;
-  }
-
-  @keyframes sheen{
-    0%{ background-position: 150% 0; opacity: 0; }
-    15%{ opacity: 1; }
-    60%{ opacity: 0.6; }
-    100%{ background-position: -50% 0; opacity: 0; }
-  }
-
-  .ticks{
-    position:absolute;
-    inset:0;
-    pointer-events:none;
-  }
-
-  .tick{
-    position:absolute;
-    top:0; bottom:0;
-    width:2px;
-    background: var(--tick);
-    mix-blend-mode: overlay;
-  }
-
-  .caption{
-    margin-top: 7px;
-    font-size: 12px;
-    color: var(--text-dim);
-    text-align: right;
-  }
-
-  .done .label::before{
-    content: "✓  ";
-    color: var(--accent-from);
-  }
+  .done .label::before{content:"✓  ";color:var(--accent-from)}
 
   @media (prefers-reduced-motion: reduce){
-    .fill{ transition: none; }
-    .fill::after{ animation: none; }
+    .progress-circle{transition:none}
   }
 </style>
 </head>
 <body>
-
   <div class="card" id="card">
-    <div class="row">
-      <div class="label" id="label">Progress<span class="sublabel" id="sublabel"></span></div>
-      <div class="stat" id="stat"></div>
+    <div class="top">
+      <div>
+        <div class="label" id="label">Progress<span class="sublabel" id="sublabel"></span></div>
+      </div>
+      <div class="stat" id="statArea">
+        <div id="statNum">0</div>
+        <div class="of" id="statOf"></div>
+      </div>
     </div>
-    <div class="track">
-      <div class="fill" id="fill"></div>
-      <div class="ticks" id="ticks"></div>
+
+    <div class="circle-wrap">
+      <svg class="svg-root" viewBox="0 0 120 120" role="img" aria-label="Progress">
+        <defs>
+          <linearGradient id="progGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+            <stop offset="0%" stop-color="var(--accent-from)"></stop>
+            <stop offset="100%" stop-color="var(--accent-to)"></stop>
+          </linearGradient>
+        </defs>
+
+        <!-- background track -->
+        <circle cx="60" cy="60" r="52" stroke-width="12" stroke="var(--track)" fill="none"></circle>
+
+        <!-- ticks (optional) -->
+        <g id="ticksGroup"></g>
+
+        <!-- progress stroke -->
+        <circle id="progress" class="progress-circle" cx="60" cy="60" r="52" stroke-width="12" stroke-linecap="round" stroke="url(#progGradient)" fill="none" transform="rotate(-90 60 60)" stroke-dasharray="0 999" stroke-dashoffset="0"></circle>
+
+        <!-- center text -->
+        <text id="centerVal" x="60" y="60" class="center-text" text-anchor="middle" dominant-baseline="central">0%</text>
+        <text id="centerSub" x="60" y="78" class="sub-center" text-anchor="middle">&nbsp;</text>
+      </svg>
     </div>
-    <div class="caption" id="caption" style="display:none;"></div>
+
+    <div class="caption" id="caption" style="display:none"></div>
   </div>
 
 <script>
-  // ---- Read config from URL params -------------------------------------
-  // Examples (append to the hosted URL, e.g. via Notion's Embed block):
-  //   ?label=Book%20draft&percent=62
-  //   ?label=Reading%20goal&current=14&goal=24&unit=books
-  //   ?label=Q3%20OKR&percent=80&color=E16259,FFB199&ticks=1&note=Due%20Sep%2030
   const qp = new URLSearchParams(window.location.search);
-
-  const label   = qp.get('label')   || 'Progress';
-  const sub     = qp.get('sublabel')|| '';
-  const unit    = qp.get('unit')    || '';
-  const note    = qp.get('note')    || '';
-  const ticks   = qp.get('ticks')   === '1';
-  const colorParam = qp.get('color'); // "from,to" as hex without '#', or single hex
+  const label = qp.get('label') || 'Progress';
+  const sub = qp.get('sublabel') || '';
+  const unit = qp.get('unit') || '';
+  const note = qp.get('note') || '';
+  const ticks = qp.get('ticks') === '1' || qp.get('ticks') === 'true';
+  const colorParam = qp.get('color');
+  const sizeParam = parseInt(qp.get('size')) || null;
 
   let current = qp.get('current') !== null ? parseFloat(qp.get('current')) : null;
   let goal    = qp.get('goal')    !== null ? parseFloat(qp.get('goal'))    : null;
   let percent = qp.get('percent') !== null ? parseFloat(qp.get('percent')): null;
 
   if (percent === null && current !== null && goal) {
-    percent = (current / goal) * 100;
+    percent = (goal === 0) ? 0 : (current / goal) * 100;
   }
   if (percent === null) percent = 0;
   percent = Math.max(0, Math.min(100, percent));
 
-  // ---- Apply accent color -------------------------------------------
+  // Apply colors
   if (colorParam) {
-    const parts = colorParam.split(',').map(c => c.trim()).filter(Boolean);
-    const from = '#' + parts[0].replace('#','');
-    const to   = parts[1] ? '#' + parts[1].replace('#','') : from;
-    document.documentElement.style.setProperty('--accent-from', from);
-    document.documentElement.style.setProperty('--accent-to', to);
+    const parts = colorParam.split(',').map(p=>p.trim()).filter(Boolean);
+    const from = parts[0].replace(/^#?/, '');
+    const to = parts[1] ? parts[1].replace(/^#?/, '') : from;
+    document.documentElement.style.setProperty('--accent-from', '#' + from);
+    document.documentElement.style.setProperty('--accent-to', '#' + to);
   }
 
-  // ---- Populate text ----------------------------------------------------
+  // Populate text
   document.getElementById('label').childNodes[0].nodeValue = label + ' ';
   if (sub) document.getElementById('sublabel').textContent = sub;
 
-  const statEl = document.getElementById('stat');
+  const statNumEl = document.getElementById('statNum');
+  const statOfEl = document.getElementById('statOf');
+
+  const displayTarget = (current !== null && goal) ? current : Math.round(percent);
   if (current !== null && goal) {
-    statEl.innerHTML = `<span id="statNum">0</span><span class="of">/${goal}${unit ? ' ' + unit : ''}</span>`;
+    statNumEl.textContent = '0';
+    statOfEl.textContent = '/' + goal + (unit ? ' ' + unit : '');
+    document.getElementById('centerSub').textContent = unit || '';
   } else {
-    statEl.innerHTML = `<span id="statNum">0</span><span class="of">%</span>`;
+    statNumEl.textContent = '0';
+    statOfEl.textContent = '%';
   }
 
-  if (note) {
-    const cap = document.getElementById('caption');
-    cap.textContent = note;
-    cap.style.display = 'block';
-  }
+  if (note) { const cap = document.getElementById('caption'); cap.textContent = note; cap.style.display = 'block'; }
+  if (percent >= 100) document.getElementById('card').classList.add('done');
 
-  if (percent >= 100) {
-    document.getElementById('card').classList.add('done');
-  }
-
-  // ---- Optional milestone ticks -----------------------------------------
+  // ticks
   if (ticks) {
-    const ticksEl = document.getElementById('ticks');
-    [25, 50, 75].forEach(p => {
-      const t = document.createElement('div');
-      t.className = 'tick';
-      t.style.left = p + '%';
-      ticksEl.appendChild(t);
+    const g = document.getElementById('ticksGroup');
+    [25,50,75].forEach(p=>{
+      const angle = (p/100)*360 - 90;
+      const x1 = 60 + Math.cos(angle * Math.PI/180) * 44;
+      const y1 = 60 + Math.sin(angle * Math.PI/180) * 44;
+      const x2 = 60 + Math.cos(angle * Math.PI/180) * 52;
+      const y2 = 60 + Math.sin(angle * Math.PI/180) * 52;
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+      line.setAttribute('stroke', 'var(--text-dim)'); line.setAttribute('stroke-width','1.8');
+      line.setAttribute('stroke-linecap','round');
+      g.appendChild(line);
     });
   }
 
-  // ---- Animate fill + count-up ------------------------------------------
-  const fillEl = document.getElementById('fill');
-  const numEl  = document.getElementById('statNum');
-  const target = current !== null && goal ? current : percent;
-  const displayTarget = current !== null && goal ? current : Math.round(percent);
+  // progress circle math
+  const prog = document.getElementById('progress');
+  const r = prog.getAttribute('r');
+  const circumference = 2 * Math.PI * r;
+  prog.setAttribute('stroke-dasharray', `${circumference} ${circumference}`);
 
-  requestAnimationFrame(() => {
-    fillEl.style.width = percent + '%';
-  });
+  const targetOffset = circumference * (1 - (percent/100));
+  prog.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.16,1,.3,1)';
+  prog.style.strokeDashoffset = circumference; // start empty
 
+  // set gradient stroke if browser supports it (already set via url(#progGradient))
+  // animate fill + count-up
   const duration = 900;
   const start = performance.now();
-  function tick(now){
+  function animate(now){
     const t = Math.min(1, (now - start) / duration);
     const eased = 1 - Math.pow(1 - t, 3);
     const val = displayTarget * eased;
-    numEl.textContent = (current !== null && goal)
-      ? Math.round(val)
-      : Math.round(val);
-    if (t < 1) requestAnimationFrame(tick);
-    else numEl.textContent = Math.round(displayTarget);
-  }
-  requestAnimationFrame(tick);
-</script>
+    document.getElementById('centerVal').textContent = (current !== null && goal) ? Math.round(val) : Math.round(val) + '%';
+    document.getElementById('statNum').textContent = Math.round(val);
+    // stroke progress
+    const offset = circumference * (1 - ( (percent * eased) / 100 ));
+    prog.style.strokeDashoffset = offset;
 
+    if (t < 1) requestAnimationFrame(animate);
+    else {
+      document.getElementById('centerVal').textContent = (current !== null && goal) ? Math.round(displayTarget) : Math.round(percent) + '%';
+      document.getElementById('statNum').textContent = Math.round(displayTarget);
+      prog.style.strokeDashoffset = targetOffset;
+      // if 100% show checkmark
+      if (percent >= 100) showCheckmark();
+    }
+  }
+
+  requestAnimationFrame(()=>{
+    // small delay so CSS transition is visible in some embed contexts
+    requestAnimationFrame(()=>requestAnimationFrame(animate));
+  });
+
+  function showCheckmark(){
+    const svg = document.querySelector('svg');
+    const chk = document.createElementNS('http://www.w3.org/2000/svg','path');
+    chk.setAttribute('d','M44 62 L56 74 L78 50');
+    chk.setAttribute('stroke','var(--accent-from)'); chk.setAttribute('stroke-width','6'); chk.setAttribute('fill','none'); chk.setAttribute('stroke-linecap','round'); chk.setAttribute('stroke-linejoin','round');
+    svg.appendChild(chk);
+  }
+
+  // expose accessible labels
+  document.querySelector('svg').setAttribute('aria-label', label + (sub ? ' - ' + sub : '') + ' ' + Math.round(percent) + '%');
+
+  // expose size if requested (max width)
+  if (sizeParam) {
+    const root = document.querySelector('.svg-root');
+    root.style.maxWidth = sizeParam + 'px';
+  }
+</script>
 </body>
 </html>
