@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progress</title>
+<style>
+  :root{
+    --accent-from: #2383E2;
+    --accent-to: #6BB6FF;
+    --track: rgba(55,53,47,0.09);
+    --text: #37352F;
+    --text-dim: rgba(55,53,47,0.55);
+    --tick: rgba(55,53,47,0.25);
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --track: rgba(255,255,255,0.10);
+      --text: rgba(255,255,255,0.92);
+      --text-dim: rgba(255,255,255,0.5);
+      --tick: rgba(255,255,255,0.28);
+    }
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    background: transparent;
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Helvetica, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+  }
+
+  body{
+    display:flex;
+    align-items:center;
+    min-height:100vh;
+    padding: 14px 18px;
+  }
+
+  .card{
+    width:100%;
+    max-width: 640px;
+  }
+
+  .row{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap: 12px;
+    margin-bottom: 9px;
+  }
+
+  .label{
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sublabel{
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-dim);
+    margin-left: 8px;
+  }
+
+  .stat{
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .stat .of{
+    font-weight: 400;
+    color: var(--text-dim);
+  }
+
+  .track{
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--track);
+    overflow: hidden;
+  }
+
+  .fill{
+    position: absolute;
+    top:0; left:0; bottom:0;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+    transition: width 1.1s cubic-bezier(.16,1,.3,1);
+  }
+
+  .fill::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%);
+    background-size: 200% 100%;
+    animation: sheen 2.6s ease-in-out 1.1s 1;
+  }
+
+  @keyframes sheen{
+    0%{ background-position: 150% 0; opacity: 0; }
+    15%{ opacity: 1; }
+    60%{ opacity: 0.6; }
+    100%{ background-position: -50% 0; opacity: 0; }
+  }
+
+  .ticks{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+  }
+
+  .tick{
+    position:absolute;
+    top:0; bottom:0;
+    width:2px;
+    background: var(--tick);
+    mix-blend-mode: overlay;
+  }
+
+  .caption{
+    margin-top: 7px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  .done .label::before{
+    content: "✓  ";
+    color: var(--accent-from);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .fill{ transition: none; }
+    .fill::after{ animation: none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="card" id="card">
+    <div class="row">
+      <div class="label" id="label">Progress<span class="sublabel" id="sublabel"></span></div>
+      <div class="stat" id="stat"></div>
+    </div>
+    <div class="track">
+      <div class="fill" id="fill"></div>
+      <div class="ticks" id="ticks"></div>
+    </div>
+    <div class="caption" id="caption" style="display:none;"></div>
+  </div>
+
+<script>
+  // ---- Read config from URL params -------------------------------------
+  // Examples (append to the hosted URL, e.g. via Notion's Embed block):
+  //   ?label=Book%20draft&percent=62
+  //   ?label=Reading%20goal&current=14&goal=24&unit=books
+  //   ?label=Q3%20OKR&percent=80&color=E16259,FFB199&ticks=1&note=Due%20Sep%2030
+  const qp = new URLSearchParams(window.location.search);
+
+  const label   = qp.get('label')   || 'Progress';
+  const sub     = qp.get('sublabel')|| '';
+  const unit    = qp.get('unit')    || '';
+  const note    = qp.get('note')    || '';
+  const ticks   = qp.get('ticks')   === '1';
+  const colorParam = qp.get('color'); // "from,to" as hex without '#', or single hex
+
+  let current = qp.get('current') !== null ? parseFloat(qp.get('current')) : null;
+  let goal    = qp.get('goal')    !== null ? parseFloat(qp.get('goal'))    : null;
+  let percent = qp.get('percent') !== null ? parseFloat(qp.get('percent')): null;
+
+  if (percent === null && current !== null && goal) {
+    percent = (current / goal) * 100;
+  }
+  if (percent === null) percent = 0;
+  percent = Math.max(0, Math.min(100, percent));
+
+  // ---- Apply accent color -------------------------------------------
+  if (colorParam) {
+    const parts = colorParam.split(',').map(c => c.trim()).filter(Boolean);
+    const from = '#' + parts[0].replace('#','');
+    const to   = parts[1] ? '#' + parts[1].replace('#','') : from;
+    document.documentElement.style.setProperty('--accent-from', from);
+    document.documentElement.style.setProperty('--accent-to', to);
+  }
+
+  // ---- Populate text ----------------------------------------------------
+  document.getElementById('label').childNodes[0].nodeValue = label + ' ';
+  if (sub) document.getElementById('sublabel').textContent = sub;
+
+  const statEl = document.getElementById('stat');
+  if (current !== null && goal) {
+    statEl.innerHTML = `<span id="statNum">0</span><span class="of">/${goal}${unit ? ' ' + unit : ''}</span>`;
+  } else {
+    statEl.innerHTML = `<span id="statNum">0</span><span class="of">%</span>`;
+  }
+
+  if (note) {
+    const cap = document.getElementById('caption');
+    cap.textContent = note;
+    cap.style.display = 'block';
+  }
+
+  if (percent >= 100) {
+    document.getElementById('card').classList.add('done');
+  }
+
+  // ---- Optional milestone ticks -----------------------------------------
+  if (ticks) {
+    const ticksEl = document.getElementById('ticks');
+    [25, 50, 75].forEach(p => {
+      const t = document.createElement('div');
+      t.className = 'tick';
+      t.style.left = p + '%';
+      ticksEl.appendChild(t);
+    });
+  }
+
+  // ---- Animate fill + count-up ------------------------------------------
+  const fillEl = document.getElementById('fill');
+  const numEl  = document.getElementById('statNum');
+  const target = current !== null && goal ? current : percent;
+  const displayTarget = current !== null && goal ? current : Math.round(percent);
+
+  requestAnimationFrame(() => {
+    fillEl.style.width = percent + '%';
+  });
+
+  const duration = 900;
+  const start = performance.now();
+  function tick(now){
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const val = displayTarget * eased;
+    numEl.textContent = (current !== null && goal)
+      ? Math.round(val)
+      : Math.round(val);
+    if (t < 1) requestAnimationFrame(tick);
+    else numEl.textContent = Math.round(displayTarget);
+  }
+  requestAnimationFrame(tick);
+</script>
+
+</body>
+</html>
