@@ -25,30 +25,65 @@
   body{display:flex;align-items:center;justify-content:center;padding:22px}
 
   .card{width:100%;max-width:420px}
+  
+  .title-section{margin-bottom:20px}
+  .title-input{width:100%;padding:8px 12px;background:rgba(55,53,47,0.1);border:2px solid transparent;border-radius:6px;font-size:24px;font-weight:700;color:var(--text);font-family:inherit;cursor:text;transition:all 0.2s ease}
+  .title-input:hover{background:rgba(55,53,47,0.15)}
+  .title-input:focus{outline:none;border-color:var(--accent-from);background:rgba(55,53,47,0.2)}
+  @media (prefers-color-scheme: dark){
+    .title-input{background:rgba(255,255,255,0.06)}
+    .title-input:hover{background:rgba(255,255,255,0.1)}
+    .title-input:focus{background:rgba(255,255,255,0.15)}
+  }
+  
   .top{display:flex;align-items:flex-start;justify-content:space-between}
   .label{font-weight:600;font-size:15px}
   .sublabel{font-weight:400;font-size:13px;color:var(--text-dim);margin-left:8px}
   .stat{font-weight:700;font-size:18px;display:flex;flex-direction:column;align-items:flex-end}
   .stat .of{font-weight:400;color:var(--text-dim);font-size:13px}
 
-  .circle-wrap{display:flex;align-items:center;justify-content:center;margin-top:12px}
+  .circle-wrap{display:flex;align-items:center;justify-content:center;margin-top:12px;margin-bottom:20px}
   .svg-root{width:100%;max-width:240px;height:auto}
   svg{display:block;width:100%;height:auto}
 
   .center-text{font-weight:700;font-size:28px;fill:var(--text);font-family:inherit}
   .sub-center{font-size:12px;fill:var(--text-dim);font-weight:600}
 
-  .caption{margin-top:10px;font-size:13px;color:var(--text-dim);text-align:right}
+  .caption{margin-bottom:20px;font-size:13px;color:var(--text-dim);text-align:right}
 
   .done .label::before{content:"✓  ";color:var(--accent-from)}
 
   @media (prefers-reduced-motion: reduce){
     .progress-circle{transition:none}
   }
+
+  /* Counter Section */
+  .counter-section{display:flex;align-items:center;gap:12px}
+  .counter-input{width:70px;padding:8px;background:rgba(55,53,47,0.1);border:1px solid rgba(55,53,47,0.2);border-radius:4px;font-size:14px;color:var(--text);text-align:center;font-family:inherit;transition:all 0.2s ease}
+  .counter-input:hover{background:rgba(55,53,47,0.15)}
+  .counter-input:focus{outline:none;border-color:var(--accent-from);background:rgba(55,53,47,0.2)}
+  @media (prefers-color-scheme: dark){
+    .counter-input{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1)}
+    .counter-input:hover{background:rgba(255,255,255,0.1)}
+    .counter-input:focus{background:rgba(255,255,255,0.15)}
+  }
+
+  .counter-label{font-size:13px;color:var(--text-dim);flex:1}
+  
+  .button{padding:6px 12px;background:var(--accent-from);color:white;border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s ease}
+  .button:hover{background:var(--accent-to);transform:translateY(-1px)}
+  .button:active{transform:translateY(0)}
+  
+  .button-group{display:flex;gap:8px}
 </style>
 </head>
 <body>
   <div class="card" id="card">
+    <!-- Editable Title -->
+    <div class="title-section">
+      <input type="text" class="title-input" id="titleInput" placeholder="Enter title..." value="Progress">
+    </div>
+
     <div class="top">
       <div>
         <div class="label" id="label">Progress<span class="sublabel" id="sublabel"></span></div>
@@ -75,7 +110,7 @@
         <g id="ticksGroup"></g>
 
         <!-- progress stroke -->
-        <circle id="progress" class="progress-circle" cx="60" cy="60" r="52" stroke-width="12" stroke-linecap="round" stroke="url(#progGradient)" fill="none" transform="rotate(-90 60 60)" stroke-dasharray="0 999" stroke-dashoffset="0"></circle>
+        <circle id="progress" class="progress-circle" cx="60" cy="60" r="52" stroke-width="12" stroke-linecap="round" stroke="url(#progGradient)" fill="none" transform="rotate(-90 60 60)" stroke-dasharray="0 0"></circle>
 
         <!-- center text -->
         <text id="centerVal" x="60" y="60" class="center-text" text-anchor="middle" dominant-baseline="central">0%</text>
@@ -84,11 +119,22 @@
     </div>
 
     <div class="caption" id="caption" style="display:none"></div>
+
+    <!-- Counter Section -->
+    <div class="counter-section">
+      <div class="button-group">
+        <button class="button" id="decreaseBtn">−</button>
+        <button class="button" id="increaseBtn">+</button>
+      </div>
+      <input type="number" class="counter-input" id="currentInput" placeholder="Current" value="0" min="0">
+      <span class="counter-label">/</span>
+      <input type="number" class="counter-input" id="goalInput" placeholder="Goal" value="0" min="1">
+    </div>
   </div>
 
 <script>
+  // Get URL parameters
   const qp = new URLSearchParams(window.location.search);
-  const label = qp.get('label') || 'Progress';
   const sub = qp.get('sublabel') || '';
   const unit = qp.get('unit') || '';
   const note = qp.get('note') || '';
@@ -96,15 +142,28 @@
   const colorParam = qp.get('color');
   const sizeParam = parseInt(qp.get('size')) || null;
 
-  let current = qp.get('current') !== null ? parseFloat(qp.get('current')) : null;
-  let goal    = qp.get('goal')    !== null ? parseFloat(qp.get('goal'))    : null;
-  let percent = qp.get('percent') !== null ? parseFloat(qp.get('percent')): null;
+  let current = qp.get('current') !== null ? parseFloat(qp.get('current')) : 0;
+  let goal = qp.get('goal') !== null ? parseFloat(qp.get('goal')) : 0;
+  const initialTitle = qp.get('label') || 'Progress';
 
-  if (percent === null && current !== null && goal) {
-    percent = (goal === 0) ? 0 : (current / goal) * 100;
-  }
-  if (percent === null) percent = 0;
-  percent = Math.max(0, Math.min(100, percent));
+  // DOM elements
+  const titleInput = document.getElementById('titleInput');
+  const currentInput = document.getElementById('currentInput');
+  const goalInput = document.getElementById('goalInput');
+  const increaseBtn = document.getElementById('increaseBtn');
+  const decreaseBtn = document.getElementById('decreaseBtn');
+  const labelEl = document.getElementById('label');
+  const statNumEl = document.getElementById('statNum');
+  const statOfEl = document.getElementById('statOf');
+  const centerValEl = document.getElementById('centerVal');
+  const centerSubEl = document.getElementById('centerSub');
+  const cardEl = document.getElementById('card');
+  const progressEl = document.getElementById('progress');
+
+  // Initialize with URL parameters
+  titleInput.value = initialTitle;
+  currentInput.value = Math.max(0, current);
+  goalInput.value = Math.max(0, goal);
 
   // Apply colors
   if (colorParam) {
@@ -115,27 +174,73 @@
     document.documentElement.style.setProperty('--accent-to', '#' + to);
   }
 
-  // Populate text
-  document.getElementById('label').childNodes[0].nodeValue = label + ' ';
   if (sub) document.getElementById('sublabel').textContent = sub;
-
-  const statNumEl = document.getElementById('statNum');
-  const statOfEl = document.getElementById('statOf');
-
-  const displayTarget = (current !== null && goal) ? current : Math.round(percent);
-  if (current !== null && goal) {
-    statNumEl.textContent = '0';
-    statOfEl.textContent = '/' + goal + (unit ? ' ' + unit : '');
-    document.getElementById('centerSub').textContent = unit || '';
-  } else {
-    statNumEl.textContent = '0';
-    statOfEl.textContent = '%';
+  if (note) { 
+    const cap = document.getElementById('caption'); 
+    cap.textContent = note; 
+    cap.style.display = 'block'; 
   }
 
-  if (note) { const cap = document.getElementById('caption'); cap.textContent = note; cap.style.display = 'block'; }
-  if (percent >= 100) document.getElementById('card').classList.add('done');
+  // Expose size if requested
+  if (sizeParam) {
+    document.querySelector('.svg-root').style.maxWidth = sizeParam + 'px';
+  }
 
-  // ticks
+  // Function to update the progress display
+  function updateProgress() {
+    const curr = Math.max(0, parseInt(currentInput.value) || 0);
+    const g = Math.max(0, parseInt(goalInput.value) || 0);
+    
+    const percent = (g === 0) ? 0 : (curr / g) * 100;
+    const displayPercent = Math.max(0, Math.min(100, percent));
+
+    // Update stat area
+    statNumEl.textContent = curr;
+    statOfEl.textContent = '/' + g + (unit ? ' ' + unit : '');
+    
+    // Update center display
+    centerValEl.textContent = curr;
+    centerSubEl.textContent = unit || '';
+    
+    // Update label
+    labelEl.childNodes[0].nodeValue = titleInput.value + ' ';
+
+    // Update progress circle
+    const r = progressEl.getAttribute('r');
+    const circumference = 2 * Math.PI * r;
+    const offset = circumference * (1 - (displayPercent / 100));
+    progressEl.style.strokeDashoffset = offset;
+    progressEl.setAttribute('stroke-dasharray', `${circumference} ${circumference}`);
+
+    // Update done state
+    if (displayPercent >= 100) {
+      cardEl.classList.add('done');
+    } else {
+      cardEl.classList.remove('done');
+    }
+
+    // Update aria label
+    document.querySelector('svg').setAttribute('aria-label', titleInput.value + ' ' + Math.round(displayPercent) + '% (' + curr + '/' + g + ')');
+  }
+
+  // Event listeners
+  titleInput.addEventListener('input', updateProgress);
+  currentInput.addEventListener('input', updateProgress);
+  currentInput.addEventListener('change', updateProgress);
+  goalInput.addEventListener('input', updateProgress);
+  goalInput.addEventListener('change', updateProgress);
+
+  increaseBtn.addEventListener('click', () => {
+    currentInput.value = Math.max(0, (parseInt(currentInput.value) || 0) + 1);
+    updateProgress();
+  });
+
+  decreaseBtn.addEventListener('click', () => {
+    currentInput.value = Math.max(0, (parseInt(currentInput.value) || 1) - 1);
+    updateProgress();
+  });
+
+  // Ticks
   if (ticks) {
     const g = document.getElementById('ticksGroup');
     [25,50,75].forEach(p=>{
@@ -153,61 +258,8 @@
     });
   }
 
-  // progress circle math
-  const prog = document.getElementById('progress');
-  const r = prog.getAttribute('r');
-  const circumference = 2 * Math.PI * r;
-  prog.setAttribute('stroke-dasharray', `${circumference} ${circumference}`);
-
-  const targetOffset = circumference * (1 - (percent/100));
-  prog.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.16,1,.3,1)';
-  prog.style.strokeDashoffset = circumference; // start empty
-
-  // set gradient stroke if browser supports it (already set via url(#progGradient))
-  // animate fill + count-up
-  const duration = 900;
-  const start = performance.now();
-  function animate(now){
-    const t = Math.min(1, (now - start) / duration);
-    const eased = 1 - Math.pow(1 - t, 3);
-    const val = displayTarget * eased;
-    document.getElementById('centerVal').textContent = (current !== null && goal) ? Math.round(val) : Math.round(val) + '%';
-    document.getElementById('statNum').textContent = Math.round(val);
-    // stroke progress
-    const offset = circumference * (1 - ( (percent * eased) / 100 ));
-    prog.style.strokeDashoffset = offset;
-
-    if (t < 1) requestAnimationFrame(animate);
-    else {
-      document.getElementById('centerVal').textContent = (current !== null && goal) ? Math.round(displayTarget) : Math.round(percent) + '%';
-      document.getElementById('statNum').textContent = Math.round(displayTarget);
-      prog.style.strokeDashoffset = targetOffset;
-      // if 100% show checkmark
-      if (percent >= 100) showCheckmark();
-    }
-  }
-
-  requestAnimationFrame(()=>{
-    // small delay so CSS transition is visible in some embed contexts
-    requestAnimationFrame(()=>requestAnimationFrame(animate));
-  });
-
-  function showCheckmark(){
-    const svg = document.querySelector('svg');
-    const chk = document.createElementNS('http://www.w3.org/2000/svg','path');
-    chk.setAttribute('d','M44 62 L56 74 L78 50');
-    chk.setAttribute('stroke','var(--accent-from)'); chk.setAttribute('stroke-width','6'); chk.setAttribute('fill','none'); chk.setAttribute('stroke-linecap','round'); chk.setAttribute('stroke-linejoin','round');
-    svg.appendChild(chk);
-  }
-
-  // expose accessible labels
-  document.querySelector('svg').setAttribute('aria-label', label + (sub ? ' - ' + sub : '') + ' ' + Math.round(percent) + '%');
-
-  // expose size if requested (max width)
-  if (sizeParam) {
-    const root = document.querySelector('.svg-root');
-    root.style.maxWidth = sizeParam + 'px';
-  }
+  // Initial render
+  updateProgress();
 </script>
 </body>
 </html>
